@@ -1,0 +1,326 @@
+# Default values for fid.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+replicaCount: 1
+image:
+  repository: radiantone/fid
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+fid:
+  ## FID root user name
+  ## Default values cn=Directory Manager
+  rootUser: "cn=Directory Manager"
+  ## Password for FID root user
+  ##
+  rootPassword: "Welcome1234"
+  ## License for FID
+  ##
+  license: "[FID Cluster License]"
+  ## Detach from cluster on termination
+  ##
+  detach: false
+  ## Deploy a readonly sts, that joins an existing FID cluster
+  ##
+  readonly: false
+  migration:
+  ## Migration file that will be imported during first install (export.zip)
+  # url: https://raw.githubusercontent.com/radiantlogic-devops/docker-compose/master/05-monitoring-stack/configs/fid/export.zip
+    url:
+  ## Post migration script to be run after install (configure_fid.sh)
+    script:
+  ## Deploy a readonly/follower-only sts, that joins current FID cluster
+  ##
+  followerOnly:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+    # targetMemoryUtilizationPercentage: 80
+    ## Detach from cluster on termination
+    detach: true
+  livenessProbe:
+    initialDelaySeconds: 60
+    timeoutSeconds: 5
+  readinessProbe:
+    initialDelaySeconds: 120
+    timeoutSeconds: 5
+zk:
+  external: true
+  connectionString: "zookeeper-app:2181"
+  clusterName: "fid-cluster"
+  ruok: "http://zookeeper-app:8080/commands/ruok"
+  userName: "admin"
+  password: "secret1234"
+sysctl:
+  enabled: false
+imagePullSecrets: []
+# imagePullSecrets:
+# - name: regcred
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: false
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+podAnnotations: {}
+podSecurityContext:
+  fsGroup: 1000
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+service:
+  type: ClusterIP
+  port: 7070
+ingress:
+  enabled: false
+#  annotations: {}
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - "/"
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+# resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+# resources:
+#  limits:
+#    cpu: 4
+#    memory: 8Gi
+#  requests:
+#    cpu: 2
+#    memory: 2Gi
+resources:
+  limits:
+    cpu: 1
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+#  targetMemoryUtilizationPercentage: 80
+nodeSelector: {}
+tolerations: []
+affinity: {}
+## Enable persistence using Persistent Volume Claims
+## ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+##
+persistence:
+  enabled: false
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, azure-disk on
+  ##   Azure, standard on GKE, AWS & OpenStack)
+  ##
+  # storageClass: "-"
+  storageClass: "default"
+  accessModes:
+  - ReadWriteOnce
+  size: 10Gi
+  annotations: {}
+## Under development
+##
+metrics:
+  enabled: false
+  image: radiantone/fid-exporter
+  imageTag: latest
+  annotations: {}
+  pushMode: true
+  pushGateway: http://prometheus:9091
+  fluentd:
+    enabled: false
+    configFile: /fluentd/etc/fluent.conf
+    elasticSearchHost: elasticsearch
+  livenessProbe:
+    initialDelaySeconds: 60
+    timeoutSeconds: 5
+  readinessProbe:
+    initialDelaySeconds: 120
+    timeoutSeconds: 5
+# Istio specific settings
+gateway:
+  enabled: false
+  hosts:
+    - chart-example.local
+  http:
+    fid:
+      name: "http-fid"
+      port: 7070
+    admin:
+      name: "http-admin"
+      port: 9100
+    api:
+      name: "http-api"
+      port: 8089
+  https:
+    fid:
+      name: "https-fid"
+      port: 7171
+    admin:
+      name: "https-admin"
+      port: 9101
+    api:
+      name: "https-api"
+      port: 8090
+  ldap:
+    name: "ldap"
+    port: 2389
+  ldaps:
+    name: "ldaps"
+    port: 2636
+
+# Kibana
+# Below is to import Kibana Dahsboard and Index patterns
+# If Kibana is deployed and healthy, changed the enabled to "true"
+# Provide kibana URL in the kibanaURL field
+# Setting enable to true will create a config_map and run a kubernetes job
+
+kibanadashboard:
+  enabled: false
+  kibanaURL: "<kibana-service-name>.<namespace>.svc.cluster.local:<kibana-port>"
+
+# Cronjob that runs migration export on a schedule
+# Uploads the artifact to an s3 bucket
+
+cronjob:
+  migration:
+    enabled: false
+    schedule: "0 0 * * *"
+    s3: "s3://fid-exports/cronjob"
+
+## Helm Hooks
+
+hooks:
+  hooks_sa:
+    enabled: false
+  pre_install:
+    enabled: false
+  post_install:
+    enabled: false
+  pre_upgrade:
+    enabled: false
+    s3: "s3://fid-exports/pre_ugrade"
+  post_upgrade:
+    enabled: false
+  pre_rollback:
+    enabled: false
+  post_rollback:
+    enabled: false
+  pre_delete:
+    enabled: false
+  post_delete:
+    enabled: false
+
+# Image Credentials
+imageCredentials:
+  enabled: false
+  registry: docker.io
+  username:
+  password:
+  email:
+
+# Dependencies are disabled by default.
+dependencies:
+  zookeeper:
+    enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+  elasticsearch:
+    enabled: false
+  kibana:
+    enabled: false
+
+# Values file Inputs for the dependency charts.
+zookeeper:
+  fullnameOverride: zookeeper
+  replicaCount: 3
+  persistence:
+    enabled: false
+    storageClass: "gp2"
+
+prometheus:
+  server:
+    fullnameOverride: prometheus-server
+  pushgateway:
+    fullnameOverride: prometheus-pushgateway
+  alertmanager:
+    fullnameOverride: prometheus-alertmanager
+  kube-state-metrics:
+    fullnameOverride: prometheus-kube-state-metrics
+  nodeExporter:
+    fullnameOverride: prometheus-node-exporter
+
+grafana:
+  fullnameOverride: grafana
+# Setup Data Source (prometheus)
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          type: prometheus
+          url: http://prometheus-server
+          access: proxy
+          isDefault: true
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'fid'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/fid
+      - name: 'zookeeper'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/zookeeper
+  dashboardsConfigMaps:
+    fid: "fid-dashboard"
+    zookeeper: "zookeeper-dashboard"
+
+elasticsearch:
+  fullnameOverride: elasticsearch
+
+kibana:
+  fullnameOverride: kibana
